@@ -91,7 +91,7 @@ static int __init ch_drv_init(void)
         unregister_chrdev_region(first, 1);
         return -1;
     }
-    if (device_create(cl, NULL, first, NULL, "mychdev") == NULL)
+    if (device_create(cl, NULL, first, NULL, "var1") == NULL)
     {
         class_destroy(cl);
         unregister_chrdev_region(first, 1);
