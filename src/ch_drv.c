@@ -15,15 +15,83 @@ static dev_t first;
 static struct cdev c_dev;
 static struct class *cl;
 
+int scull_major = 0;
+int scull_minor = 0;
+int scull_nr_devs = 1;
+int scull_quantum = 4000;
+int scull_qset = 1000;
+
+struct scull_qset {
+    void **data;
+    struct scull_qset *next;
+};
+
+struct scull_dev {
+    struct scull_qset *data;
+    int quantum;
+    int qset;
+    unsigned long size;
+    unsigned int access_key;
+    struct semaphore sem;
+    struct cdev cdev;
+};
+
+struct scull_dev *scull_device;
+
+
+int scull_trim(struct scull_dev *dev)
+{
+    struct scull_qset *next, *dptr;
+    int qset = dev->qset;
+    int i;
+
+    for (dptr = dev->data; dptr; dptr = next) {
+        if (dptr->data) {
+            for (i = 0; i < qset; i++)
+                kfree(dptr->data[i]);
+
+            kfree(dptr->data);
+            dptr->data = NULL;
+        }
+
+        next = dptr->next;
+        kfree(dptr);
+    }
+
+    dev->size = 0;
+    dev->quantum = scull_quantum;
+    dev->qset = scull_qset;
+    dev->data = NULL;
+
+    return 0;
+}
+
 static int my_open(struct inode *i, struct file *f)
 {
+    struct scull_dev *dev;
+
     pr_info("Driver: open()\n");
+
+    dev = container_of(i->i_cdev, struct scull_dev, cdev);
+    f->private_data = dev;
+
+    if ((f->f_flags & O_ACCMODE) == O_WRONLY) {
+        if (down_interruptible(&dev->sem))
+            return -ERESTARTSYS;
+
+        scull_trim(dev);
+        up(&dev->sem);
+    }
+
+    pr_info("Driver: opened \n");
+
     return 0;
 }
 
 static int my_close(struct inode *i, struct file *f)
 {
     pr_info("Driver: close()\n");
+
     return 0;
 }
 
