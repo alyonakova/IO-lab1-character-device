@@ -14,6 +14,7 @@
 static dev_t first;
 static struct cdev c_dev;
 static struct class *cl;
+static size_t bytes_counter;
 
 static int my_open(struct inode *i, struct file *f)
 {
@@ -34,6 +35,7 @@ static ssize_t my_read(struct file *f, char __user *buf, size_t len, loff_t *off
     size_t rlen = strlen(data);
 
     pr_info("Driver: read()\n");
+    pr_info("Total amount of data written so far: %ld bytes", bytes_counter);
 
     if (*off != rlen)
         *off = rlen;
@@ -61,6 +63,8 @@ static ssize_t my_write(struct file *f, const char __user *buf, size_t len, loff
         kfree(data);
         return -EFAULT;
     }
+
+    bytes_counter += len;
 
     set_fs(KERNEL_DS);
 
@@ -110,6 +114,9 @@ static int __init ch_drv_init(void)
         unregister_chrdev_region(first, 1);
         return -1;
     }
+
+    bytes_counter = 0;
+
     return 0;
 }
 
@@ -119,6 +126,7 @@ static void __exit ch_drv_exit(void)
     device_destroy(cl, first);
     class_destroy(cl);
     unregister_chrdev_region(first, 1);
+    pr_info("Total amount of data written: %ld bytes", bytes_counter);
     pr_info("Bye!!!\n");
 }
 
