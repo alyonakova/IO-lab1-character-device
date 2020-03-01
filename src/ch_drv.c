@@ -124,5 +124,8 @@ module_init(ch_drv_init);
 module_exit(ch_drv_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Author");
-MODULE_DESCRIPTION("The first kernel module");
+MODULE_AUTHOR("Aleksandra Zhurbova");
+MODULE_AUTHOR("Alyona Kovalyova");
+MODULE_AUTHOR("Egor Dubenetskiy");
+MODULE_AUTHOR("Vadim Kolishchuk");
+MODULE_DESCRIPTION("A simple character device driver");
