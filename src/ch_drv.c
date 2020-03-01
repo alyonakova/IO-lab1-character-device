@@ -9,19 +9,21 @@
 #include <linux/uaccess.h>
 #include <linux/slab.h>
 
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
 static dev_t first;
 static struct cdev c_dev;
 static struct class *cl;
 
 static int my_open(struct inode *i, struct file *f)
 {
-    printk(KERN_INFO "Driver: open()\n");
+    pr_info("Driver: open()\n");
     return 0;
 }
 
 static int my_close(struct inode *i, struct file *f)
 {
-    printk(KERN_INFO "Driver: close()\n");
+    pr_info("Driver: close()\n");
     return 0;
 }
 
@@ -31,7 +33,7 @@ static ssize_t my_read(struct file *f, char __user *buf, size_t len, loff_t *off
 char data [] = "Data from kernel module\n";
 size_t rlen = strlen(data);
 
-printk(KERN_INFO "Driver: read()\n");
+pr_info("Driver: read()\n");
 
 if(*off != rlen)
 *off = rlen;
@@ -64,7 +66,7 @@ wlen = vfs_write(test_file, data, len, &test_file->f_pos);
 
 set_fs(USER_DS);
 
-printk(KERN_INFO "Driver: write() len = %ld, %lld\n", len, test_file->f_pos);
+pr_info("Driver: write() len = %ld, %lld\n", len, test_file->f_pos);
 kfree(data);
 
 return len;
@@ -81,7 +83,7 @@ static struct file_operations mychdev_fops =
 
 static int __init ch_drv_init(void)
 {
-    printk(KERN_INFO "Hello!\n");
+    pr_info("Hello!\n");
     if (alloc_chrdev_region(&first, 0, 1, "ch_dev") < 0)
     {
         return -1;
@@ -115,7 +117,7 @@ static void __exit ch_drv_exit(void)
     device_destroy(cl, first);
     class_destroy(cl);
     unregister_chrdev_region(first, 1);
-    printk(KERN_INFO "Bye!!!\n");
+    pr_info("Bye!!!\n");
 }
 
 module_init(ch_drv_init);
