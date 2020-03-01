@@ -30,56 +30,58 @@ static int my_close(struct inode *i, struct file *f)
 static ssize_t my_read(struct file *f, char __user *buf, size_t len, loff_t *off)
 {
 
-char data [] = "Data from kernel module\n";
-size_t rlen = strlen(data);
+    char data[] = "Data from kernel module\n";
+    size_t rlen = strlen(data);
 
-pr_info("Driver: read()\n");
+    pr_info("Driver: read()\n");
 
-if(*off != rlen)
-*off = rlen;
-else
-return 0;
+    if (*off != rlen)
+        *off = rlen;
+    else
+        return 0;
 
-if(copy_to_user(buf, data, rlen) != 0) {
-return -EFAULT;
+    if (copy_to_user(buf, data, rlen) != 0)
+    {
+        return -EFAULT;
+    }
+
+    return rlen;
 }
 
-return rlen;
-}
-
-static ssize_t my_write(struct file *f, const char __user *buf,  size_t len, loff_t *off)
+static ssize_t my_write(struct file *f, const char __user *buf, size_t len, loff_t *off)
 {
 
-char fname[] = "wfile";
-size_t wlen = 0;
-struct file* test_file = filp_open(fname, O_RDWR|O_CREAT, 0644);
-char * data = kmalloc(len, GFP_USER);
+    char fname[] = "wfile";
+    size_t wlen = 0;
+    struct file *test_file = filp_open(fname, O_RDWR | O_CREAT, 0644);
+    char *data = kmalloc(len, GFP_USER);
 
-if(copy_from_user(data, buf, len) != 0) {
-kfree(data);
-return -EFAULT;
-}
+    if (copy_from_user(data, buf, len) != 0)
+    {
+        kfree(data);
+        return -EFAULT;
+    }
 
-set_fs(KERNEL_DS);
+    set_fs(KERNEL_DS);
 
-wlen = vfs_write(test_file, data, len, &test_file->f_pos);
+    wlen = vfs_write(test_file, data, len, &test_file->f_pos);
 
-set_fs(USER_DS);
+    set_fs(USER_DS);
 
-pr_info("Driver: write() len = %ld, %lld\n", len, test_file->f_pos);
-kfree(data);
+    pr_info("Driver: write() len = %ld, %lld\n", len, test_file->f_pos);
+    kfree(data);
 
-return len;
+    return len;
 }
 
 static struct file_operations mychdev_fops =
-        {
-                .owner = THIS_MODULE,
-                .open = my_open,
-                .release = my_close,
-                .read = my_read,
-                .write = my_write
-        };
+    {
+        .owner = THIS_MODULE,
+        .open = my_open,
+        .release = my_close,
+        .read = my_read,
+        .write = my_write
+    };
 
 static int __init ch_drv_init(void)
 {
