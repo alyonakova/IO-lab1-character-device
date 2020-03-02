@@ -109,7 +109,7 @@ static ssize_t my_write(struct file *f, const char __user *buf,  size_t len, lof
 
   
   wlen = vfs_write(file, data, len, &file->f_pos);
-  wlen = vfs_write(file, len , sizeof(len)/sizeof(int), &file->f_pos);
+  //wlen = vfs_write(file, len , sizeof(len)/sizeof(int), &file->f_pos);
   
   set_fs(USER_DS);
 
