@@ -10,3 +10,7 @@
 # https://git-scm.com/docs/gitignore.
 
 out/
+
+# JetBrains CLion
+cmake-build-debug/
+.idea/
