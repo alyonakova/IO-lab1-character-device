@@ -14,77 +14,17 @@
 static dev_t first;
 static struct cdev c_dev;
 static struct class *cl;
+
 static size_t bytes_counter;
 
-int scull_major = 0;
-int scull_minor = 0;
-int scull_nr_devs = 1;
-int scull_quantum = 4000;
-int scull_qset = 1000;
-
-struct scull_qset {
-    void **data;
-    struct scull_qset *next;
-};
-
-struct scull_dev {
-    struct scull_qset *data;
-    int quantum;
-    int qset;
-    unsigned long size;
-    unsigned int access_key;
-    struct semaphore sem;
-    struct cdev cdev;
-};
-
-struct scull_dev *scull_device;
-
-
-int scull_trim(struct scull_dev *dev)
-{
-    struct scull_qset *next, *dptr;
-    int qset = dev->qset;
-    int i;
-
-    for (dptr = dev->data; dptr; dptr = next) {
-        if (dptr->data) {
-            for (i = 0; i < qset; i++)
-                kfree(dptr->data[i]);
-
-            kfree(dptr->data);
-            dptr->data = NULL;
-        }
-
-        next = dptr->next;
-        kfree(dptr);
-    }
-
-    dev->size = 0;
-    dev->quantum = scull_quantum;
-    dev->qset = scull_qset;
-    dev->data = NULL;
-
-    return 0;
-}
+static char* WORK_FILE = "work_file";
+static struct file * file;
 
 static int my_open(struct inode *i, struct file *f)
 {
-    struct scull_dev *dev;
-
     pr_info("Driver: open()\n");
 
-    dev = container_of(i->i_cdev, struct scull_dev, cdev);
-    f->private_data = dev;
-
-    if ((f->f_flags & O_ACCMODE) == O_WRONLY) {
-        if (down_interruptible(&dev->sem))
-            return -ERESTARTSYS;
-
-        scull_trim(dev);
-        up(&dev->sem);
-    }
-
-    pr_info("Driver: opened \n");
+    //file = filp_open(WORK_FILE, O_RDWR|O_CREAT, 0644);
 
     return 0;
 }
@@ -96,22 +36,59 @@ static int my_close(struct inode *i, struct file *f)
     return 0;
 }
 
+static bool starts_with(const char *a, const char *b)
+{
+    if (strncmp(a, b, strlen(b)) == 0) {
+
+        return 1;
+    }
+
+    return 0;
+}
+
+static char* transform_string(const char* string)
+{
+    int len = strlen(string);
+    char* result = kmalloc(len*3, GFP_USER);
+    int pos = 0, i;
+    for (i = 0; i < len; i++){
+        int charNum = string[i];
+        if (charNum >= 65 && charNum <= 90 || charNum >= 97 && charNum <= 122){
+            charNum -= (charNum > 90) ? 96 : 64;
+            if (charNum > 9){
+                result[pos++] = (charNum / 10) + 48;
+                result[pos++] = (charNum % 10) + 48;
+            }
+            else {
+                result[pos++] = charNum + 48;
+            }
+            result[pos++] = ' ';
+        }
+    }
+    return result;
+}
+
 static ssize_t my_read(struct file *f, char __user *buf, size_t len, loff_t *off)
 {
+    char* data = kmalloc(len, GFP_USER);
 
-    char data[] = "Data from kernel module\n";
+    set_fs(KERNEL_DS);
+    set_fs(USER_DS);
+
+    data = transform_string(data);
+
     size_t rlen = strlen(data);
 
     pr_info("Driver: read()\n");
-    pr_info("Total amount of data written so far: %ld bytes", bytes_counter);
 
-    if (*off != rlen)
+    if(*off != rlen) {
         *off = rlen;
-    else
-        return 0;
+    } else {
 
-    if (copy_to_user(buf, data, rlen) != 0)
-    {
+        return 0;
+    }
+
+    if(copy_to_user(buf, data, rlen) != 0) {
         return -EFAULT;
     }
 
@@ -120,27 +97,55 @@ static ssize_t my_read(struct file *f, char __user *buf, size_t len, loff_t *off
 
 static ssize_t my_write(struct file *f, const char __user *buf, size_t len, loff_t *off)
 {
-
-    char fname[] = "wfile";
-    size_t wlen = 0;
-    struct file *test_file = filp_open(fname, O_RDWR | O_CREAT, 0644);
-    char *data = kmalloc(len, GFP_USER);
-
-    if (copy_from_user(data, buf, len) != 0)
-    {
+    char * data = kmalloc(len, GFP_USER);
+    if(copy_from_user(data, buf, len) != 0) {
         kfree(data);
+
         return -EFAULT;
     }
 
-    bytes_counter += len;
+    if (starts_with(data, "open ")){
+        if (file != NULL) {
+            filp_close(file, NULL);
+        }
+
+        int fileNameLen = strlen(data) - 5;
+        char subbuff[fileNameLen];
+
+        memcpy(&subbuff[0], &data[5], fileNameLen);
+//        subbuff[0] = '"';
+        subbuff[fileNameLen] = "\0";
+        WORK_FILE = subbuff;
+
+        pr_info("Имя файла - %s\n", WORK_FILE);
+        file = filp_open(WORK_FILE, O_RDWR|O_CREAT, 0644);
+
+        return len;
+    } else if (starts_with(data, "close")){
+        if (file != NULL) {
+            filp_close(file, NULL);
+            file = NULL;
+        } else {
+            pr_info("Driver: can`t close (nothing was opened)\n");
+        }
+
+        return len;
+    } else if (file == NULL){
+        pr_info("Driver: can`t write (nothing was opened)\n");
+
+        return -1;
+    }
 
     set_fs(KERNEL_DS);
 
-    wlen = vfs_write(test_file, data, len, &test_file->f_pos);
+
+    vfs_write(file, data, len, &file->f_pos);
+
+//    vfs_write(file, len, sizeof(len)/si, &file->f_pos);
 
     set_fs(USER_DS);
 
-    pr_info("Driver: write() len = %ld, %lld\n", len, test_file->f_pos);
+    pr_info("Driver: write() len = %ld\n", len);
     kfree(data);
 
     return len;
