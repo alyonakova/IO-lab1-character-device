@@ -5,12 +5,15 @@ OUTPUT=out
 SOURCES=$(wildcard $(SOURCE)/*.c)
 PWD = $(shell pwd)
 
+KERNEL_VERSION=$(shell uname -r)
+MODULES_DIR=/lib/modules/$(shell uname -r)
+
 ##
 ## BUILD
 ##
 
 all: $(subst $(SOURCE),$(OUTPUT),$(SOURCES)) $(OUTPUT)/Makefile
-	make -C /lib/modules/$(shell uname -r)/build M="$(PWD)/$(OUTPUT)" modules
+	make -C "$(MODULES_DIR)/build" M="$(PWD)/$(OUTPUT)" modules
 
 # Create a symlink from src to out
 $(OUTPUT)/%: $(SOURCE)/%
