@@ -54,4 +54,14 @@ unload:
 
 reload: unload clear-buffer load
 
-.PHONY: all clean clear-buffer load unload reload
+
+##
+## TEST
+##
+
+check:
+	@echo "Checking is not implemented yet."
+	@exit 1
+
+
+.PHONY: all clean clear-buffer load unload reload check
