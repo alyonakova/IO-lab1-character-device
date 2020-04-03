@@ -24,4 +24,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         inline: <<-SHELL
             make -C /lab1
         SHELL
+
+    # HACK: A workaround for the issue with SSH config,
+    # see https://github.com/hashicorp/vagrant/issues/10601.
+    if ARGV[0] == 'ssh'
+      config.ssh.config = "/dev/null"
+    end
 end
