@@ -15,16 +15,14 @@ static dev_t first;
 static struct cdev c_dev;
 static struct class *cl;
 
+static const int MAX_COUNTER_STR_LEN = 128;
 static size_t bytes_counter;
 
-static char* WORK_FILE = "work_file";
-static struct file * file;
+static struct file * working_file;
 
 static int my_open(struct inode *i, struct file *f)
 {
     pr_info("Driver: open()\n");
-
-    //file = filp_open(WORK_FILE, O_RDWR|O_CREAT, 0644);
 
     return 0;
 }
@@ -95,6 +93,7 @@ static ssize_t my_read(struct file *f, char __user *buf, size_t len, loff_t *off
     return rlen;
 }
 
+
 static ssize_t my_write(struct file *f, const char __user *buf, size_t len, loff_t *off)
 {
     char * data = kmalloc(len + 1, GFP_USER);
@@ -105,32 +104,31 @@ static ssize_t my_write(struct file *f, const char __user *buf, size_t len, loff
     }
     data[len] = '\0';
 
-    if (starts_with(data, "open ")){
-        if (file != NULL) {
-            filp_close(file, NULL);
+    if (starts_with(data, "open ")) {
+        if (working_file != NULL) {
+            filp_close(working_file, NULL);
         }
 
-        int fileNameLen = strlen(data) - 5;
-        char subbuff[fileNameLen + 1];
+        int filename_len = strlen(data) - 5;
+        char filename[filename_len + 1];
 
-        memcpy(&subbuff[0], &data[5], fileNameLen);
-        subbuff[fileNameLen] = '\0';
-        WORK_FILE = subbuff;
+        memcpy(&filename[0], &data[5], filename_len);
+        filename[filename_len] = '\0';
 
-        pr_info("Имя файла - %s\n", WORK_FILE);
-        file = filp_open(WORK_FILE, O_RDWR|O_CREAT, 0644);
+        pr_info("Имя файла: %s\n", filename);
+        working_file = filp_open(filename, O_RDWR | O_CREAT, 0644);
 
         return len;
     } else if (starts_with(data, "close")){
-        if (file != NULL) {
-            filp_close(file, NULL);
-            file = NULL;
+        if (working_file != NULL) {
+            filp_close(working_file, NULL);
+            working_file = NULL;
         } else {
             pr_info("Driver: can`t close (nothing was opened)\n");
         }
 
         return len;
-    } else if (file == NULL){
+    } else if (working_file == NULL) {
         pr_info("Driver: can`t write (nothing was opened)\n");
 
         return -1;
@@ -138,10 +136,13 @@ static ssize_t my_write(struct file *f, const char __user *buf, size_t len, loff
 
     set_fs(KERNEL_DS);
 
+    vfs_write(working_file, data, len, &working_file->f_pos);
+    bytes_counter += len;
 
-    vfs_write(file, data, len, &file->f_pos);
-
-//    vfs_write(file, len, sizeof(len)/si, &file->f_pos);
+    char counter_str[MAX_COUNTER_STR_LEN];
+    sprintf(counter_str, "Total written bytes: % -10ld", bytes_counter);
+    long long offset = 0;
+    vfs_write(working_file, counter_str, strlen(counter_str), &offset);
 
     set_fs(USER_DS);
 
