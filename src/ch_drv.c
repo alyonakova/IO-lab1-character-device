@@ -97,12 +97,13 @@ static ssize_t my_read(struct file *f, char __user *buf, size_t len, loff_t *off
 
 static ssize_t my_write(struct file *f, const char __user *buf, size_t len, loff_t *off)
 {
-    char * data = kmalloc(len, GFP_USER);
+    char * data = kmalloc(len + 1, GFP_USER);
     if(copy_from_user(data, buf, len) != 0) {
         kfree(data);
 
         return -EFAULT;
     }
+    data[len] = '\0';
 
     if (starts_with(data, "open ")){
         if (file != NULL) {
@@ -110,11 +111,10 @@ static ssize_t my_write(struct file *f, const char __user *buf, size_t len, loff
         }
 
         int fileNameLen = strlen(data) - 5;
-        char subbuff[fileNameLen];
+        char subbuff[fileNameLen + 1];
 
         memcpy(&subbuff[0], &data[5], fileNameLen);
-//        subbuff[0] = '"';
-        subbuff[fileNameLen] = "\0";
+        subbuff[fileNameLen] = '\0';
         WORK_FILE = subbuff;
 
         pr_info("Имя файла - %s\n", WORK_FILE);
