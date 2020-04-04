@@ -8,6 +8,8 @@
 
 # Установка
 
+> **PRO TIP:** Вместо установки драйвера на локальную машину можно [создать виртуальную машину с помощью Vagrant][Инструкция Vagrant] (опционально).
+
 Чтобы собрать модуль ядра, выполните команду:
 ```
 make all
@@ -63,3 +65,6 @@ cat filename  # Total written bytes: 9
 # Лицензия
 
 GNU GPL v2 или более поздняя. См. файл `LICENSE.txt`.
+
+
+[Инструкция Vagrant]: https://github.com/alyonakova/IO-lab1-character-device/wiki/Vagrant
