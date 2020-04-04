@@ -37,7 +37,21 @@ make all reload
 
 После загрузки модуля создаётся файл символьного устройства `/dev/var1`.
 
-Сейчас системные вызовы `open`, `read`, `write`, `close` над этим файлом не производят никаких действий.
+Пример использования:
+```
+echo -n 'open filename' > /dev/var1
+cat filename  # Total written bytes: 0
+
+echo -n 1234567 > /dev/var1
+cat filename  # Total written bytes: 7
+
+echo -n 89 > /dev/var1
+cat filename  # Total written bytes: 9
+
+echo -n close > /dev/var1
+echo -n ABC > /dev/var1  # Permission denied
+cat filename  # Total written bytes: 9
+```
 
 # Участие
 
