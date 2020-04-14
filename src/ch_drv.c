@@ -140,7 +140,7 @@ static ssize_t my_write(struct file *f, const char __user *buf, size_t len, loff
     bytes_counter += len;
 
     char counter_str[MAX_COUNTER_STR_LEN];
-    sprintf(counter_str, "Total written bytes: % -10ld", bytes_counter);
+    sprintf(counter_str, "Total written bytes: % -10ld%n", bytes_counter);
     long long offset = 0;
     vfs_write(working_file, counter_str, strlen(counter_str), &offset);
 
