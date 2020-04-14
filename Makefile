@@ -12,22 +12,25 @@ MODULES_DIR=/lib/modules/$(shell uname -r)
 ## BUILD
 ##
 
-all: $(subst $(SOURCE),$(OUTPUT),$(SOURCES)) $(OUTPUT)/Makefile
+all: $(OUTPUT)/$(TARGET).ko
+
+$(OUTPUT)/$(TARGET).ko: $(subst $(SOURCE),$(OUTPUT),$(SOURCES)) $(OUTPUT)/Makefile
 	make -C "$(MODULES_DIR)/build" M="$(PWD)/$(OUTPUT)" modules
 
 # Create a symlink from src to out
-$(OUTPUT)/%: $(SOURCE)/%
-	[ -d $(OUTPUT) ] || mkdir $(OUTPUT)
-	ln -s ../$< $@
+$(OUTPUT)/%: $(SOURCE)/% $(OUTPUT)
+	ln -sf ../$< $@
 
 # Generate a Makefile with the needed obj-m and *-objs set
-$(OUTPUT)/Makefile:
+$(OUTPUT)/Makefile: $(OUTPUT)
 	echo "obj-m += $(TARGET).o" > $@
 	echo "$(TARGET)-objs := $(subst $(TARGET).o,, $(subst .c,.o,$(subst $(SOURCE)/,,$(SOURCES))))" >> $@
 
+$(OUTPUT):
+	[ -d $(OUTPUT) ] || mkdir $(OUTPUT)
+
 clean:
 	rm -Rf $(OUTPUT)
-	mkdir -p $(OUTPUT)
 
 
 ##
